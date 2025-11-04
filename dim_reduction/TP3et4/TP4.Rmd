@@ -1,0 +1,25 @@
+### Installer et charger les packages et importer les données
+
+```{r}
+library(FactoMineR)
+library(factoextra)
+library(Factoshiny)
+library(readr)
+```
+
+```{r}
+data <- read_csv("Life-Expectancy-Data-Averaged.csv")
+
+rownames(data) <- data$Country
+data$Country <- NULL
+
+data_num <- data[sapply(data, is.numeric)]
+```
+
+```{r}
+Factoshiny(data)
+```
+
+```{r}
+data
+```

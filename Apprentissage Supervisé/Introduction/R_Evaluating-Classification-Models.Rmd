@@ -1,0 +1,217 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+# General project parameters
+## Loading the libraries
+```{r}
+# Load the required libraries
+library(stats)    # for 'weighted.mean'
+library(rminer)   # for 'holdout' function
+```
+
+## Loading the 'iris' data
+```{r}
+?iris
+data(iris)
+
+# Display the first n rows
+head(iris, n = 7);
+# Display the dataset dimensions
+dim(iris)
+```
+
+# Holdout evaluation
+## Splitting the indices of the orginal dataset
+```{r}
+?holdout
+# Split the loan_data in training and test sets
+holdout_idx = holdout(y = iris$Species, ratio = 2/3, mode = "stratified", seed = 2023)
+print(names(holdout_idx))
+```
+
+## Creating and checking the training set
+```{r}
+# Print the ten first indices of the training dataset
+print(paste( "Train data index:", 
+             paste(holdout_idx$tr[1:10], collapse = ", "))
+)
+# Create the training dataset
+data_train = iris[holdout_idx$tr,]
+# Print information on the training dataset
+print("Train data head:")
+print(paste("Dimensions --> ", paste(dim(data_train), collapse = " x "), collapse = ""))
+print(head(data_train, n=10))
+```
+
+## Creating and checking the test set
+```{r}
+# Print the ten first indices of the test dataset
+print(paste( "Test data index:", 
+             paste(holdout_idx$ts[1:10], collapse = ", "))
+)
+# Create the test dataset
+data_test = iris[holdout_idx$ts,]
+# Print information on the test dataset
+print("Test data head:")
+print(paste("Dimensions --> ", paste(dim(data_test), collapse = " x "), collapse = ""))
+print(head(data_test, n=10))
+```
+
+# Fitting the model and making predictions
+## Train a decision tree model on the training dataset
+```{r}
+# The response Y is the variable 'Species'
+# The features considered are all the other variables.
+decision_tree_model <- fit(Species~., data = data_train, model='rpart')
+decision_tree_model
+```
+
+## Predict the Species for the instances of the test dataset
+```{r}
+model_predictions <- predict(decision_tree_model, newdata = data_test)
+print(head(model_predictions, n = 7))
+print(tail(model_predictions, n = 7))
+```
+
+# Computing the precision, recall and fscore metrics
+## Confusion matrix for one class (eg.'setosa') vs. the others
+```{r}
+my_class = 'virginica' # setosa, versicolor, virginica
+my_class_nb = which(levels(data_test$Species) == my_class)
+true_y <- as.numeric(data_test$Species)
+pred_y <- max.col(model_predictions)
+
+true_pos <- (true_y == my_class_nb) & (pred_y == my_class_nb)
+true_neg <- (true_y != my_class_nb) & (pred_y != my_class_nb)
+false_pos <- (true_y != my_class_nb) & (pred_y == my_class_nb)
+false_neg <- (true_y == my_class_nb) & (pred_y != my_class_nb)
+conf_mat <- matrix(c(sum(true_pos), sum(false_pos),
+                     sum(false_neg), sum(true_neg)), 2, 2)
+
+colnames(conf_mat) <- c(sprintf('Ypred = %s', levels(data_test$Species)[my_class_nb]),
+                        sprintf('Ypred = !%s', levels(data_test$Species)[my_class_nb]))
+
+rownames(conf_mat) <- c(sprintf('Ytrue = %s', levels(data_test$Species)[my_class_nb]), 
+                        sprintf('Ytrue != %s', levels(data_test$Species)[my_class_nb]))
+conf_mat
+```
+
+## Precision, Recall, and Fscore for one class vs. the others
+```{r}
+TP = conf_mat[1, 1]
+TN = conf_mat[2, 2]
+FN = conf_mat[1, 2]
+FP = conf_mat[2, 1]
+
+# precision
+precision = TP / (TP + FP)
+# recall
+recall = TP / (TP + FN)
+# Fscore
+fscore = (2 * precision * recall)/(precision + recall)
+
+print(paste(c(sprintf("Precision: %.2f", precision),
+              sprintf("Recall: %.2f", recall),
+              sprintf("Fscore: %.2f", fscore)), collapse = ' | '))
+```
+
+## Macro averaging
+```{r}
+# Create a function to compute the TP, TN, FN and FP for on class vs. all others
+get_confmat <- function(my_class_nb, true_y, pred_y){
+  
+  ret_confMat = NULL
+  
+  true_pos <- (true_y == my_class_nb) & (pred_y == my_class_nb)
+  true_neg <- (true_y != my_class_nb) & (pred_y != my_class_nb)
+  false_pos <- (true_y != my_class_nb) & (pred_y == my_class_nb)
+  false_neg <- (true_y == my_class_nb) & (pred_y != my_class_nb)
+  ret_confMat <- matrix(c(sum(true_pos), sum(false_pos),
+                      sum(false_neg), sum(true_neg)), 2, 2)
+  ret_confMat
+}
+```
+
+```{r}
+classes_name = c('setosa', 'versicolor', 'virginica')
+k = length(classes_name)
+
+TP_vect = rep(0,k)
+FP_vect = rep(0,k)
+FN_vect = rep(0,k)
+TN_vect = rep(0,k)
+
+true_y <- as.numeric(data_test$Species)
+pred_y <- max.col(model_predictions)
+
+for(my_class in classes_name){
+  
+  my_class_nb = which(classes_name == my_class)
+  conf_mat = get_confmat(my_class_nb, true_y, pred_y)
+  
+  TP_vect[my_class_nb] = conf_mat[1, 1]
+  TN_vect[my_class_nb] = conf_mat[2, 2]
+  FN_vect[my_class_nb] = conf_mat[1, 2]
+  FP_vect[my_class_nb] = conf_mat[2, 1]
+}
+```
+
+```{r}
+# Macro average
+pr_vect = rep(0,k)
+re_vect = rep(0,k)
+fs_vect = rep(0,k)
+
+for(my_class_nb in c(1:k)){
+  pr_vect[my_class_nb] = TP_vect[my_class_nb]/(TP_vect[my_class_nb]+FP_vect[my_class_nb])
+  re_vect[my_class_nb] = TP_vect[my_class_nb]/(TP_vect[my_class_nb]+FN_vect[my_class_nb])
+  fs_vect[my_class_nb] = 2*pr_vect[my_class_nb]*re_vect[my_class_nb]/(pr_vect[my_class_nb]+re_vect[my_class_nb])
+}
+
+pr_macro = mean(pr_vect)
+re_macro = mean(re_vect)
+fs_macro = mean(fs_vect)
+
+print(paste(c(sprintf("Precision_macro: %.4f", pr_macro),
+              sprintf("Recall_macro: %.4f", re_macro),
+              sprintf("Fscore_macro: %.4f", fs_macro)), collapse = ' | '))
+```
+
+```{r}
+# Weighted macro average
+# NB: as source code example only; classes are balanced for iris
+pr_vect = rep(0,k)
+re_vect = rep(0,k)
+fs_vect = rep(0,k)
+
+for(my_class_nb in c(1:k)){
+  pr_vect[my_class_nb] = TP_vect[my_class_nb]/(TP_vect[my_class_nb]+FP_vect[my_class_nb])
+  re_vect[my_class_nb] = TP_vect[my_class_nb]/(TP_vect[my_class_nb]+FN_vect[my_class_nb])
+  fs_vect[my_class_nb] = 2*pr_vect[my_class_nb]*re_vect[my_class_nb]/(pr_vect[my_class_nb]+re_vect[my_class_nb])
+}
+
+weights = c(length(as.numeric(data_test$Species) == 1),
+            length(as.numeric(data_test$Species) == 2),
+            length(as.numeric(data_test$Species) == 3))
+pr_wmacro = stats::weighted.mean(x = pr_vect, w = weights)
+re_wmacro = stats::weighted.mean(x = re_vect, w = weights)
+fs_wmacro = stats::weighted.mean(x = fs_vect, w = weights)
+
+print(paste(c(sprintf("Precision_wmacro: %.4f", pr_wmacro),
+              sprintf("Recall_wmacro: %.4f", re_wmacro),
+              sprintf("Fscore_wmacro: %.4f", fs_wmacro)), collapse = ' | '))
+```
+
+```{r}
+# Micro average
+pr_micro = sum(TP_vect)/(sum(TP_vect)+sum(FP_vect))
+re_micro = sum(TP_vect)/(sum(TP_vect)+sum(FN_vect))
+fs_micro = 2*pr_micro*re_micro/(pr_micro+re_micro)
+
+print(paste(c(sprintf("Precision_micro: %.4f", pr_micro),
+              sprintf("Recall_micro: %.4f", re_micro),
+              sprintf("Fscore_micro: %.4f", fs_micro)), collapse = ' | '))
+```

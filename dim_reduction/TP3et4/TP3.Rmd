@@ -1,0 +1,96 @@
+---
+---
+---
+
+### Importation des données et exécution de l'ACP et le plot
+
+```{r}
+library(FactoMineR)
+library(factoextra)
+
+data(decathlon)
+
+decathlon_data <- decathlon[, 1:10]
+
+res.pca <- PCA(decathlon_data, scale.unit = TRUE, graph = FALSE)
+```
+
+### 1. Générer le plot des individus
+
+```{r}
+fviz_pca_ind(res.pca,
+             geom.ind = c("point", "text"),
+             col.ind = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)
+```
+
+### 2. Observer
+
+Le nuage n’est pas totalement homogène, il présente une certaine structure. On observe que les athlètes ne sont pas répartis de manière aléatoire : certains sont proches les uns des autres, ce qui suggère qu’ils ont des profils de performance similaires, tandis que d’autres sont éloignés du centre ou isolés.
+
+De plus, on distingue quelques points extrêmes, situés à la périphérie du graphique. Ces individus peuvent correspondre à des athlètes ayant des performances particulièrement fortes ou faibles sur certaines épreuves, c’est-à-dire des valeurs atypiques dans l’ensemble des données.
+
+En résumé, le nuage est structuré avec la présence de petits groupes distincts et de quelques valeurs extrêmes, ce qui indique une diversité de profils parmi les athlètes du décathlon.
+
+### 3. Identifier les individus les plus éloigné du centre
+
+```{r}
+head(res.pca$ind$coord)
+```
+
+```{r}
+fviz_pca_ind(res.pca,
+             geom.ind = c("point", "text"),
+             select.ind = list(name = rownames(decathlon_data)[1:5]),
+             repel = TRUE)
+```
+
+```{r}
+res.pca$ind$dist[1:5]
+```
+
+Les individus plus éloignés du centre présentent des différences plus larges le long de ces composantes principales.
+
+Ceux qui sont proches du centre représentent les « performances moyennes ».
+
+Les points adjacents sur le graphique indiquent des modèles de performance similaires.
+
+### 4. Repére les groupe d'athletes proches les uns des autres
+
+```{r}
+set.seed(123)
+res.km <- kmeans(res.pca$ind$coord[, 1:2], centers = 3, nstart = 25)
+
+# kmeans
+fviz_cluster(res.km, 
+             data = res.pca$ind$coord[, 1:2],
+             geom = c("point", "text"), 
+             ellipse.type = "norm",
+             palette = "lancet",
+             repel = TRUE,
+             ggtheme = theme_minimal()) +
+  labs(title = "Regroupement des athlètes selon les deux premières dimensions de l’ACP")
+```
+
+```{r}
+fviz_pca_biplot(res.pca, rapel = TRUE)
+```
+
+Dans ce regroupement, les points qui sont très proches correspondent à des athlètes dont les performances sont également très similaires.
+
+Par exemple, dans le cluster bleu, les athlètes BERNARD, Smirnov et Gomez ont des résultats très proches dans toutes les épreuves, ce qui signifie qu’ils présentent des performances sportives semblables, notamment avec de très bons scores dans l’épreuve du saut à la perche (pole vault).
+
+Pour les autres groupes, c’est la même chose : les athlètes proches sur le graphique ont des résultats très similaires.
+
+### 5. Comment se distribuent les athlètes le long du premier axe et le second axe ?
+
+Sur la droite du graphique, on trouve les flèches correspondant à Long jump, High jump, Shot put, Discus, et Javelin. Cela signifie que le premier axe (Dim 1) est principalement associé aux épreuves de force et de puissance explosive (sauts et lancers).
+
+À gauche, on retrouve des épreuves de vitesse comme 100 m, 110 m haies et 400 m. Les athlètes de ce côté sont davantage spécialisés dans la vitesse et l’endurance courte.
+
+Dim 1 oppose les épreuves de vitesse (à gauche) aux épreuves de force et saut (à droite).
+
+En haut du graphique, on observe les flèches de 1500 m, 400 m et 110 m haies. Le second axe (Dim 2) correspond davantage aux épreuves d’endurance et de résistance. En bas, on retrouve par exemple Long jump ou 100 m, donc des épreuves plus explosives et techniques.
+
+Dim 2 distingue les athlètes endurants (valeurs positives) de ceux qui sont plus orientés vers la puissance et la vitesse pure (valeurs négatives).
