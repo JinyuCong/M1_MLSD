@@ -1,0 +1,207 @@
+```{r}
+library(FactoMineR)
+library(factoextra)  # 可视化
+library(Factoshiny)
+
+# Création du data frame
+data <- data.frame(
+  Region = c("ILEF","CHAM","PICA","HNOR","CENT","BNOR","BOUR","NORD","LORR","ALSA",
+             "FCOMTE","PAYS","BRET","POIT","AQUI","MIDI","LIMO","RHON","AUVE","LANG","PROV","CORS"),
+  HF00 = c(1.27,0.14,0.21,0.19,0.24,0.15,0.15,0.46,0.23,0.19,0.12,0.34,0.29,0.15,0.26,0.23,0.05,0.61,0.11,0.22,0.44,0.02),
+  HF05 = c(1.24,0.15,0.22,0.21,0.26,0.15,0.16,0.48,0.25,0.19,0.12,0.35,0.30,0.16,0.28,0.24,0.06,0.63,0.12,0.23,0.47,0.03),
+  HF10 = c(1.20,0.16,0.24,0.22,0.27,0.17,0.17,0.52,0.27,0.19,0.13,0.37,0.32,0.17,0.30,0.25,0.06,0.64,0.13,0.24,0.48,0.03),
+  HF15 = c(1.21,0.16,0.23,0.22,0.27,0.17,0.18,0.54,0.28,0.19,0.14,0.40,0.34,0.18,0.31,0.27,0.07,0.66,0.14,0.25,0.48,0.03),
+  HF20 = c(1.29,0.15,0.20,0.19,0.24,0.15,0.16,0.49,0.26,0.19,0.12,0.36,0.32,0.16,0.30,0.27,0.07,0.62,0.14,0.24,0.45,0.02),
+  HF25 = c(1.59,0.17,0.23,0.22,0.29,0.16,0.18,0.50,0.28,0.23,0.14,0.38,0.34,0.18,0.33,0.29,0.08,0.70,0.15,0.26,0.50,0.03),
+  HF30 = c(1.56,0.16,0.23,0.22,0.29,0.17,0.19,0.49,0.29,0.24,0.14,0.38,0.34,0.19,0.34,0.31,0.08,0.73,0.15,0.26,0.54,0.03),
+  HF35 = c(1.49,0.17,0.24,0.22,0.30,0.17,0.19,0.49,0.30,0.23,0.14,0.39,0.36,0.19,0.36,0.32,0.08,0.72,0.16,0.28,0.55,0.03),
+  HF40 = c(1.37,0.17,0.23,0.23,0.30,0.18,0.20,0.49,0.29,0.23,0.14,0.39,0.35,0.20,0.36,0.31,0.09,0.69,0.16,0.27,0.54,0.03),
+  HF45 = c(1.37,0.17,0.24,0.22,0.31,0.17,0.20,0.48,0.29,0.22,0.14,0.39,0.35,0.20,0.37,0.31,0.09,0.68,0.17,0.28,0.54,0.03),
+  HF50 = c(1.26,0.15,0.20,0.19,0.27,0.15,0.18,0.41,0.24,0.17,0.12,0.34,0.31,0.18,0.33,0.28,0.08,0.63,0.15,0.25,0.51,0.03),
+  HF55 = c(0.88,0.10,0.13,0.13,0.19,0.10,0.13,0.26,0.18,0.14,0.09,0.24,0.22,0.14,0.24,0.21,0.06,0.47,0.11,0.19,0.41,0.03),
+  HF60 = c(0.74,0.11,0.14,0.13,0.21,0.12,0.14,0.29,0.19,0.14,0.09,0.26,0.26,0.15,0.25,0.22,0.07,0.43,0.12,0.20,0.39,0.02),
+  HF65 = c(0.67,0.10,0.14,0.13,0.21,0.12,0.15,0.29,0.19,0.13,0.09,0.26,0.26,0.16,0.26,0.23,0.08,0.43,0.12,0.22,0.40,0.02),
+  HF70 = c(0.57,0.09,0.12,0.11,0.19,0.11,0.13,0.26,0.17,0.11,0.08,0.24,0.24,0.14,0.25,0.22,0.07,0.38,0.11,0.20,0.36,0.02),
+  HF75 = c(0.46,0.08,0.10,0.09,0.16,0.09,0.11,0.21,0.12,0.09,0.06,0.19,0.19,0.12,0.21,0.18,0.06,0.31,0.10,0.17,0.31,0.02),
+  HF80 = c(0.54,0.08,0.09,0.10,0.18,0.09,0.12,0.18,0.12,0.08,0.07,0.20,0.19,0.13,0.22,0.20,0.07,0.32,0.10,0.17,0.34,0.02),
+  Total = c(18.71,2.29,3.17,3.04,4.17,2.43,2.75,6.82,3.95,2.96,1.91,5.51,4.97,2.80,4.97,4.36,1.21,9.65,2.24,3.92,7.70,0.44)
+)
+```
+
+```{r}
+CAshiny(data)
+HCPCshiny(data)
+# 运行对应分析
+#res.ca <- CA(data)
+
+# 查看惯量和贡献
+#summary(res.ca)
+#fviz_ca_biplot(res.ca, repel = TRUE)
+```
+
+```{r}
+# 加载包
+library(FactoMineR)
+library(factoextra)
+
+# 录入题目里的表（按行输入）
+suicide <- matrix(c(
+  1160, 335, 1524,  67,  12, 189,   # M10-20
+  2823, 883, 2751, 213, 852, 366,   # M25-35
+  2465, 625, 3936, 247, 875, 244,   # M40-50
+  1531, 201, 3581, 207, 477, 273,   # M55-65
+  938,   45, 2948, 212, 229, 268,   # M70-90
+  921,   40,  212,  30,  25, 131,   # F10-20
+  1672, 113,  575, 139,  64, 276,   # F25-35
+  2224,  91, 1481, 354,  52, 327,   # F40-50
+  2283,  45, 2014, 679,  29, 388,   # F55-65
+  1548,  29, 1355, 501,   3, 383    # F70-90
+), nrow = 10, byrow = TRUE)
+
+colnames(suicide) <- c("POISON","GAZ","PENDAISON","NOYADE","ARME","SAUT")
+rownames(suicide) <- c("M10-20","M25-35","M40-50","M55-65","M70-90",
+                       "F10-20","F25-35","F40-50","F55-65","F70-90")
+
+suicide <- as.data.frame(suicide)
+suicide
+```
+
+```{r}
+res.ca <- CA(suicide, graph = FALSE)  # FactoMineR::CA
+fviz_ca_biplot(res.ca, repel = TRUE)   # 第1象限 = Dim1 × Dim2
+
+```
+
+```{r}
+res.ca$row$contrib         # 每行对各维度的贡献（百分比）
+res.ca$row$cos2            # 每行在各维上的 cos²（表示质量）
+
+# 例如：选在 Dim1 或 Dim2 上贡献 > 平均值(=100/行数≈10%) 的行
+row_contrib <- res.ca$row$contrib
+```
+
+```{r}
+
+```
+
+```{row_contrib[ row_contrib[,"Dim 1"] > 10 | row_contrib[,"Dim 2"] > 10, ]}
+
+```
+
+```{r}
+res.ca$col$contrib
+res.ca$col$cos2
+
+col_contrib <- res.ca$col$contrib
+col_contrib[ col_contrib[,"Dim 1"] > 100/6 | col_contrib[,"Dim 2"] > 100/6, ]
+
+```
+
+```{r}
+res.ca$eig            # 各轴的特征值和解释率
+res.ca$row$coord      # 年龄组在各轴上的坐标
+res.ca$col$coord      # 各自杀方式在各轴上的坐标
+
+```
+
+```{r}
+res.ca$eig            # 看 Dim3 的 eigenvalue 和 % of inertia
+
+# 哪些年龄在 Dim3 上贡献大
+row_contrib_dim3 <- res.ca$row$contrib[,"Dim 3"]
+row_contrib_dim3[ row_contrib_dim3 > 10 ]   # 阈值你自己定
+
+# 哪些方式在 Dim3 上贡献大
+col_contrib_dim3 <- res.ca$col$contrib[,"Dim 3"]
+col_contrib_dim3[ col_contrib_dim3 > 100/6 ]
+
+# 也可以画第二个平面：Dim2 × Dim3
+fviz_ca_biplot(res.ca, axes = c(2,3), repel = TRUE)
+
+```
+
+```{r}
+# 这两个年龄组在前两轴上的坐标、cos²
+res.ca$row$coord[c("F55-65","F70-90"), 1:2]
+res.ca$row$cos2[c("F55-65","F70-90"), 1:2]
+
+```
+
+```{r}
+# 行剖面：各年龄组对每种自杀方式的条件分布 P(forme | âge)
+row_profiles <- prop.table(as.matrix(suicide), margin = 1)
+row_profiles[c("F55-65","F70-90"), ]
+
+```
+
+```{r}
+HCPCshiny(res.ca)
+```
+
+```{r}
+library(FactoMineR)
+library(factoextra)
+
+autos <- data.frame(
+  Modele    = c("GOLF","CITROEN.C4","P607","VELSATIS","CITROEN.C2",
+                "CHRYS300","AUDIA3","OUTLAND","PTCRUISER","SANTA_FE"),
+  puissance = c(75,138,204,150,61,340,102,202,223,125),
+  longueur  = c(421,426,491,486,367,502,421,455,429,450),
+  hauteur   = c(149,146,145,158,147,148,143,167,154,173),
+  poids     = c(1217,1381,1723,1735,932,1835,1205,1595,1595,1757),
+  CO2       = c(143,142,223,188,141,291,168,237,235,197),
+  origine   = c("Europe","France","France","France","France",
+                "Autres","Europe","Autres","Autres","Autres"),
+  carburant = c("Diesel","Diesel","Diesel","Diesel","Essence",
+                "Essence","Essence","Diesel","Essence","Diesel"),
+  T4X4      = c("non","non","non","non","non",
+                "non","non","oui","non","oui")
+)
+
+# 把车型名放到行名里，分析时不当变量用
+row.names(autos) <- autos$Modele
+autos$Modele <- NULL
+
+autos$origine   <- as.factor(autos$origine)
+autos$carburant <- as.factor(autos$carburant)
+autos$T4X4      <- as.factor(autos$T4X4)
+
+str(autos)  # 检查一下类型
+res.famd <- FAMD(autos, graph = TRUE)
+
+```
+
+```{r}
+FAMDshiny(autos)
+```
+
+```{r}
+library(FactoMineR)
+library(factoextra)
+
+farine <- data.frame(
+  pain = c("FUR","HAR","JAS","TUN","JAD","TAS","HEU","DUO",
+           "JAQ","DUS","KIN","DFS","TUL","RAV","BRE","DUX",
+           "KTN","BRI","HAB"),
+  PRI = c(1,1,1,1,2,2,2,2,3,3,3,1,1,1,1,3,3,3,3),
+  EAU = c(3,1,3,3,2,1,1,3,2,2,2,3,3,2,3,3,1,1,1),
+  GLU = c(1,3,2,2,1,2,3,2,1,2,2,3,1,3,1,1,3,2,3),
+  PRO = c(2,2,1,1,3,2,3,1,2,1,3,2,1,1,3,2,3,3,3),
+  CAI = c(1,3,3,1,2,3,3,1,2,2,2,1,1,1,1,1,3,3,3)
+)
+
+# 把品种名放到行名里
+row.names(farine) <- farine$pain
+farine$pain <- NULL
+
+# 把 1/2/3 声明成因子（定性变量）
+farine[] <- lapply(farine, factor)
+str(farine)
+
+```
+
+```{r}
+library(Factoshiny)
+res.farine <- MCA(farine)
+HCPCshiny(res.farine)
+```
