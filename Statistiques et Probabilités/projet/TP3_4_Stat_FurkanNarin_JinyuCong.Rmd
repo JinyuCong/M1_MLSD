@@ -1,0 +1,443 @@
+---
+title: "TP1 - Statistique descriptive (Recensement)"
+author: "Étudiant Master ML (style naturel, quelques fautes de frappe)"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+# petit reset (comme dans le cours)
+rm(list=ls())
+```
+
+# 0) Préparation — chargement des données et fonctions utilitaires
+
+```{r load-data}
+# chargement du fichier (le fichier Recensement.txt doit être dans le même dossier que ce .Rmd)
+df <- read.table("Recensement.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+# jette un oeil rapide
+dim(df)
+head(df)
+
+# On transforme certaines variables en facteurs (variables qualitatives)
+qualis <- c("SEXE","REGION","STAT_MARI","SYNDICAT","CATEGORIE","NIV_ETUDES","REV_FOYER")
+for(v in qualis) df[[v]] <- as.factor(df[[v]])
+
+# SAL_HOR doit etre numeric (parfois des trucs bizarres mais ici ok)
+df$SAL_HOR <- as.numeric(as.character(df$SAL_HOR))
+
+# Fonctions fournies par l'enseignant (Var, SD, Cov selon formules du cours)
+Var_course <- function(x) {
+  var(x) * (length(x)-1) / length(x)
+}
+SD_course <- function(x) {
+  sqrt(var(x) * (length(x)-1) / length(x))
+}
+Cov_course <- function(x,y) {
+  cov(x,y) * (length(x)-1) / length(x)
+}
+
+# petite vérif
+summary(df$SAL_HOR)
+```
+
+# 1) Taille de l'échantillon et unité statistique
+
+```{r taille-unite}
+# taille
+n <- nrow(df)
+n
+# unite statistique
+unite <- "individu"
+cat("Taille de l'echantillon :", n, "\nUnite statistique :", unite)
+```
+
+# 2) Quelles variables qualitatives / quantitatives ?
+
+Variables qualitatives (telles que traitées ici) : `SEXE`, `REGION`, `STAT_MARI`, `SYNDICAT`, `CATEGORIE`, `NIV_ETUDES`, `REV_FOYER`.
+
+Variables quantitatives : `AGE`, `SAL_HOR`, `NB_PERS`, `NB_ENF`.
+
+# 3) Analyse des variables qualitatives
+
+## 3.1 Distribution sur l'ensemble de l'échantillon
+
+Pour chaque variable qualitative on donne les effectifs et fréquences arrondies puis un graphique.
+
+```{r distrib-qualis, fig.height=8, fig.width=10}
+par(mfrow=c(3,3))
+for(v in qualis){
+  tab <- table(df[[v]])
+  fr <- round(prop.table(tab),3)
+  print(v)
+  print(tab)
+  print(fr)
+  # barplot
+  barplot(tab, main=paste("Effectifs -", v), las=2)
+  # pie (si pas trop de modalités)
+  if(length(tab) <= 8) pie(tab, main=paste("Répartition -", v))
+}
+par(mfrow=c(1,1))
+```
+
+> Remarque: selon le TP, on peut regrouper certaines modalités si nécessaire (ex : niveaux d'études proches). Ici je laisse les modalités brutes.
+
+## 3.2 Analyse selon la catégorie professionnelle (1, 2 et 5)
+
+On va comparer les catégories professionnelles *1 (cadres)*, *2 (professions libérales)* et *5 (employés de bureau)*.
+
+```{r par-categorie-qualis, fig.height=6, fig.width=10}
+subset_cat <- df[df$CATEGORIE %in% c("1","2","5"), ]
+subset_cat <- droplevels(subset_cat)
+
+levels(subset_cat$CATEGORIE)
+
+tab_sexe_cat <- table(subset_cat$CATEGORIE, subset_cat$SEXE)
+print(tab_sexe_cat)
+
+vars_a_comparer <- c("SEXE","REGION","STAT_MARI","SYNDICAT")
+
+par(mfrow=c(2,2))
+
+for(v in vars_a_comparer){
+  
+  tab <- table(subset_cat$CATEGORIE, subset_cat[[v]])
+  
+  barplot(t(tab), 
+          beside=TRUE, 
+          main=paste(v, "par categorie"), 
+          las=2, 
+          legend.text = colnames(tab),
+          ylab="Effectifs")
+}
+```
+
+## Comparaison des 3 catégories professionnelles (1, 2 et 5)
+
+### Répartition par sexe (SEXE)
+
+La catégorie 2 et 5 présente la proportion de femmes la plus élevée, nettement supérieure à celle des hommes. Dans l’ensemble, les trois catégories se caractérisent par une dominance féminine. Cela suggère une présence plus importante des femmes dans les professions considérées, en particulier dans la catégorie 2 et 5.
+
+### Répartition régionale (REGION)
+
+La catégorie 2 regroupe systématiquement plus d’individus que les catégories 1 et 5 dans toutes les régions. La catégorie 2 est la plus diversifiée et la plus nombreuse sur le plan régional, ce qui traduit probablement une plus grande amplitude démographique ou professionnelle.
+
+### Statut marital (STAT_MARI)
+
+Dans tous les catégories, les personnes mariées représentent la proportion la plus importante. Ces résultats peuvent refléter des différences d’âge ou de stabilité socioéconomique selon le type de profession.
+
+### Appartenance à un syndicat (SYNDICAT)
+
+La tendance montre que la catégorie 2 est la plus engagée syndicalement, tandis que la catégorie 1 l’est le moins.
+
+L’analyse comparative des trois catégories professionnelles montre des différences importantes sur le plan démographique, géographique, matrimonial et syndical. La catégorie 2 se distingue systématiquement comme la plus nombreuse, la plus féminisée, la plus syndiquée et la plus diversifiée régionalement. Les catégories 1 et 5 présentent des effectifs plus faibles.
+
+# 4) Analyse des variables quantitatives
+
+## 4.1 Analyse globale
+
+Variables quantitatives: `AGE`, `SAL_HOR`, `NB_PERS`, `NB_ENF`.
+
+```{r descriptives-quantitatives}
+quant_vars <- c("AGE","SAL_HOR","NB_PERS","NB_ENF")
+for(v in quant_vars){
+  cat("---", v, "---\n")
+  print(summary(df[[v]]))
+  cat("Var (R) =", var(df[[v]], na.rm=TRUE), "\n")
+  cat("Var (cours) =", Var_course(df[[v]]), "\n")
+  cat("SD (R) =", sd(df[[v]], na.rm=TRUE), "\n")
+  cat("SD (cours) =", SD_course(df[[v]]), "\n\n")
+}
+```
+
+### 4.1.1 SAL_HOR: histogrammes / influence des classes
+
+```{r hist-salhor, fig.height=5, fig.width=9}
+par(mfrow=c(1,3))
+hist(df$SAL_HOR, breaks=10, main="Histogramme SAL_HOR (10 classes)
+", xlab="Salaire horaire")
+hist(df$SAL_HOR, breaks=20, main="Histogramme SAL_HOR (20 classes)", xlab="Salaire horaire")
+# en donnant des breaks manuellement
+hist(df$SAL_HOR, breaks=c(0,5,10,15,20,25,30,40,60,100), main="Histogramme SAL_HOR (bornes perso)", xlab="Salaire horaire")
+par(mfrow=c(1,1))
+
+env <- ecdf(df$SAL_HOR)
+plot(env, main="FONCTION DE REPARTITION EMPIRIQUE - SAL_HOR", xlab="SAL_HOR")
+
+# fréquence cumulée
+br <- hist(df$SAL_HOR, plot=FALSE, breaks=10)
+plot(br$mids, cumsum(br$counts)/sum(br$counts), type='s', main="Freq cumulee - SAL_HOR", xlab="SAL_HOR", ylab="Freq cumulee")
+```
+
+La variable SAL_HOR présente une distribution fortement asymétrique à droite : la plupart des salariés perçoivent un salaire horaire compris entre 5 et 20, tandis que les salaires élevés restent très rares. Les histogrammes montrent que, malgré l’influence du choix des classes, la forme générale de la distribution demeure inchangée, avec une forte concentration dans les valeurs basses et une longue queue vers les valeurs élevées. La fonction de répartition empirique confirme que plus de 90 % des individus gagnent moins de 40, et la courbe des fréquences cumulées souligne la rareté des salaires extrêmes. Dans l’ensemble, l’analyse met en évidence une distribution très déséquilibrée, caractéristique des données salariales.
+
+## 4.2 Analyse selon la catégorie professionnelle (1,2,5)
+
+```{r quant-par-categorie, fig.height=6, fig.width=10}
+# comparer SAL_HOR par categorie (1,2,5)
+boxplot(SAL_HOR ~ CATEGORIE, data = subset_cat, main="SAL_HOR par categorie (1,2,5)", ylab="Salaire horaire")
+
+# stats par categorie
+by(subset_cat$SAL_HOR, subset_cat$CATEGORIE, summary)
+by(subset_cat$SAL_HOR, subset_cat$CATEGORIE, sd)
+```
+
+Les salaires horaires diffèrent sensiblement selon les trois catégories professionnelles. Les catégories 1 et 2 présentent des niveaux de salaire comparables, avec une médiane identique d’environ 20 et des moyennes proches (25,22 pour la catégorie 1 et 23,93 pour la catégorie 2). Toutefois, la catégorie 1 affiche une plus grande dispersion, comme en témoignent son écart-type élevé et la présence de valeurs extrêmes pouvant atteindre 99. La catégorie 2, bien que légèrement moins dispersée, comporte également plusieurs valeurs atypiques. En revanche, la catégorie 5 se distingue par des salaires nettement plus faibles : une médiane de 14, une moyenne de 15,16, ainsi qu’une variabilité beaucoup plus réduite. Dans l’ensemble, les catégories 1 et 2 regroupent des salaires plus élevés et plus hétérogènes, tandis que la catégorie 5 se caractérise par un niveau salarial inférieur et une distribution plus resserrée.
+
+# 5) Indicateurs statistiques (ensemble et par catégorie)
+
+## 5.1 Indicateurs globaux
+
+```{r indicateurs-globaux}
+# Pour chaque variable (qualitative ou quantitative) on calcule les indicateurs pertinents
+# Quantitatives
+res_stats <- data.frame(Variable=character(), Mean=numeric(), Median=numeric(), SD=numeric(), Var=numeric(), Min=numeric(), Max=numeric(), stringsAsFactors = FALSE)
+for(v in quant_vars){
+  m <- mean(df[[v]], na.rm=TRUE)
+  med <- median(df[[v]], na.rm=TRUE)
+  sdv <- sd(df[[v]], na.rm=TRUE)
+  vv <- Var_course(df[[v]])
+  res_stats <- rbind(res_stats, data.frame(Variable=v, Mean=m, Median=med, SD=sdv, Var=vv, Min=min(df[[v]], na.rm=TRUE), Max=max(df[[v]], na.rm=TRUE)))
+}
+res_stats
+
+# Mode des variables quantitatives discrètes (ex: NB_PERS)
+mode_nb_pers <- as.numeric(names(sort(table(df$NB_PERS), decreasing=TRUE)[1]))
+cat("Mode NB_PERS =", mode_nb_pers, "\n")
+```
+
+## 5.2 Indicateurs par catégorie (1,2,5)
+
+```{r indicateurs-par-categorie}
+# on calcule mean/median/sd de SAL_HOR pour les 3 catégories
+agg <- aggregate(SAL_HOR ~ CATEGORIE, data = subset_cat, FUN = function(x) c(mean=mean(x), median=median(x), sd=sd(x)))
+# petit formatage
+agg2 <- do.call(data.frame, agg)
+colnames(agg2) <- c("CATEGORIE","Mean","Median","SD")
+agg2
+```
+
+Les trois catégories professionnelles présentent des profils salariaux nettement distincts. Les catégories 1 et 2 affichent des niveaux de salaire similaires, avec une médiane identique de 20 et des moyennes proches (25,22 pour la catégorie 1 et 23,93 pour la catégorie 2). Ces deux groupes montrent également une forte variabilité des salaires, comme l’indiquent leurs écarts-types élevés (16,41 et 13,73), révélant une dispersion importante et la présence de salaires très élevés chez certains individus. En revanche, la catégorie 5 se caractérise par un niveau salarial nettement inférieur, avec une médiane de 14, une moyenne de 15,16, et une dispersion beaucoup plus faible (SD = 4,40). Ainsi, les catégories 1 et 2 regroupent les salariés les mieux rémunérés et les plus hétérogènes, tandis que la catégorie 5 correspond à un groupe moins rémunéré et plus homogène.
+
+# 6) Régression linéaire (inspirée du code de l'enseignant)
+
+On s'intéresse à la relation entre l'âge (`AGE`) et le salaire horaire (`SAL_HOR`). On va reproduire les étapes vues en cours : ajustement linéaire, diagnostics, ajouts polynomial, AIC, etc.
+
+```{r regression}
+# variables
+y <- df$SAL_HOR
+x <- df$AGE
+# Ajustement OLS
+model_lm <- lm(y ~ x)
+summary(model_lm)
+
+# coef à la main
+beta1_hat <- cov(x,y, use="complete.obs")/var(x, na.rm=TRUE)
+beta0_hat <- mean(y, na.rm=TRUE) - mean(x, na.rm=TRUE) * beta1_hat
+cat("beta0_hat =", beta0_hat, "\n")
+cat("beta1_hat =", beta1_hat, "\n")
+# predictions
+y_hat <- beta0_hat + beta1_hat * x
+# R2
+R2 <- var(y_hat, na.rm=TRUE)/var(y, na.rm=TRUE)
+cat("R2 (manuel) =", R2, "\n")
+cat("cor^2 =", cor(x,y, use="complete.obs")^2, "\n")
+
+# test de correlation simple
+cor(x,y, use="complete.obs")
+
+# graphique + droite
+plot(x, y, main="SAL_HOR en fonction de l'AGE", xlab="AGE", ylab="SAL_HOR")
+abline(model_lm, col="red", lwd=2)
+legend("topright", legend=c("Droite de regression linéaire"), text.col=c("red"))
+
+# residus
+e_hat <- resid(model_lm)
+hist(e_hat, freq=FALSE, main="Histogramme des residus (lin)")
+boxplot(e_hat, main="Boxplot residus (lin)")
+plot(e_hat ~ x, xlab="AGE", ylab="Residus", main="Residus vs AGE")
+abline(h=0)
+abline(h=2*SD_course(e_hat), lty=2)
+abline(h=-2*SD_course(e_hat), lty=2)
+
+# couleurs pour chaque degré
+cols <- c("red", "blue", "darkgreen", "purple")
+
+plot(x, y, main="Comparaison polynomes", xlab="AGE", ylab="SAL_HOR")
+
+xseq <- seq(min(x, na.rm=TRUE), max(x, na.rm=TRUE), by=0.1)
+AICs <- c()
+
+for(deg in 1:4){
+  form <- as.formula(paste("y ~ poly(x,", deg, ", raw=TRUE)"))
+  m <- lm(form)
+  AICs <- c(AICs, AIC(m))
+  pred <- predict(m, newdata = data.frame(x=xseq))
+  
+  # tracer chaque courbe en couleur + ligne plus épaisse
+  lines(xseq, pred, col=cols[deg], lwd=2)
+}
+
+legend("topright",
+       legend=c("Degré 1","Degré 2","Degré 3","Degré 4"),
+       col=cols,
+       lwd=2,
+       bty="n")
+
+AICs
+which.min(AICs)
+
+
+# meilleur deg d'apres AIC
+cat("AICs (deg 1..4):", paste(AICs, collapse=","), "\n")
+```
+
+Les deux graphiques permettent d’analyser la relation entre le salaire horaire (SAL_HOR) et l’âge (AGE) à travers différents modèles de régression. La droite de régression linéaire met en évidence une relation globalement faible mais positive, indiquant une légère augmentation du salaire avec l’âge, bien que cette tendance soit peu marquée en raison d’une grande dispersion des points.
+
+La comparaison des ajustements polynomiaux montre que les modèles de degrés supérieurs capturent davantage les variations locales de la courbe : les polynômes de degrés 2 à 4 révèlent une croissance plus rapide du salaire aux âges intermédiaires suivie d’une stabilisation, voire d’une légère baisse pour les âges élevés. Toutefois, ces ajustements plus complexes restent sensibles aux valeurs extrêmes et n’améliorent qu’en partie la qualité globale de la prédiction. Dans l’ensemble, la relation entre âge et salaire apparaît faible et non linéaire, avec une variabilité importante qui limite la pertinence explicative des modèles polynomial ou linéaire.
+
+Les diagnostics des résidus montrent que le modèle linéaire ajusté pour expliquer SAL_HOR à partir de l’AGE présente plusieurs limites. Le boxplot des résidus révèle une forte asymétrie ainsi que de nombreux points aberrants, indiquant que les écarts entre valeurs observées et valeurs prédites sont souvent importants. Le nuage des résidus en fonction de l’âge confirme cette hétérogénéité : les résidus restent très dispersés et ne se répartissent pas de manière homogène autour de zéro, ce qui suggère une variance non constante et une relation potentiellement non linéaire entre les deux variables. En résumé, les graphiques montrent que le modèle linéaire ne capture qu’imparfaitement la structure des données et que l’hypothèse classique d’homoscédasticité n’est pas respectée.
+
+# 7) Quelques graphiques ggplot (optionnel)
+
+```{r ggplot-exemples, message=FALSE}
+library(ggplot2)
+ggp <- ggplot(df, aes(x=AGE, y=SAL_HOR)) + geom_point(alpha=0.6) + ggtitle("SAL_HOR ~ AGE (ggplot)")
+ggp
+# droite de regression
+ggp + stat_smooth(method = "lm", se = FALSE)
+```
+
+# Conclusion (rapide)
+
+-   Taille de l'échantillon : `r n` individus.
+-   Variables qualitatives principales listées ci-dessus; quantitatives aussi.
+-   L'analyse descriptive montre une variabilité notable des salaires horaires ; l'AGE explique une partie de la variabilité mais R² reste modeste (voir sortie `summary(model_lm)`).
+
+> **Remarques / limitations** : j'ai fait des choix rapides (ex: prise en compte de `CATEGORIE` comme facteur, sélection des classes pour les histogrammes). Pour aller plus loin on pourra : nettoyer davantage les outliers, essayer des modèles robustes, inclure d'autres covariables (NIV_ETUDES, REGION, etc.) et faire une régression multiple.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+rm(list=ls())
+```
+
+# 1. Données
+
+```{r}
+if(!require(MASS)) install.packages("MASS")
+library(MASS)
+data(Boston)
+head(Boston)
+str(Boston)
+
+X <- Boston$lstat
+Y <- Boston$medv
+```
+
+# 2. Ajustements linéaire, polynomiaux, régressogramme et courbe de régression
+
+```{r}
+# Question 1: Représentez graphiquement Y en fonction de X
+plot(X, Y, main="medv en fonction de lstat", xlab="lstat", ylab="medv")
+```
+
+```{r}
+# Question 2: Estimez les paramètres de la droite des moindres carrés de deux façons
+beta1_hat <- cov(X,Y)/var(X)
+beta0_hat <- mean(Y) - beta1_hat * mean(X)
+model_lm <- lm(Y ~ X)
+summary(model_lm)
+plot(X, Y, main="Droite de régression linéaire", xlab="lstat", ylab="medv")
+abline(model_lm, col="red", lwd=2)
+```
+
+```{r}
+# Question 3: Calculez le coefficient de corrélation et R2
+cor_xy <- cor(X,Y)
+R2 <- cor_xy^2
+cat("Corrélation =", cor_xy, " R2 =", R2, "\n")
+```
+
+```{r}
+# Question 4: Effectuez le test de corrélation (package robusTest)
+# install.packages("devtools")
+library(devtools)
+#install_github("obouaziz/robusTest")
+library(robusTest)
+cortest(X,Y)
+```
+
+```{r}
+# Question 5: Calculez les valeurs ajustées
+fitted_values <- fitted(model_lm)
+head(fitted_values)
+```
+
+```{r}
+# Question 6: Calculez les résidus et écart-type + graphiques
+res <- resid(model_lm)
+sd_res <- sqrt(sum(res^2)/(length(res)-2))
+hist(res, freq=FALSE, col="yellow", main="Histogramme des résidus", xlab="Résidus")
+boxplot(res, col="lightblue", main="Boxplot des résidus")
+plot(X, res, main="Résidus en fonction de lstat", xlab="lstat", ylab="Résidus")
+abline(h=0, lwd=2)
+abline(h=2*sd_res, lty=2)
+abline(h=-2*sd_res, lty=2)
+```
+
+```{r}
+# Question 7: Donnez une prévision de Y à partir de nouvelles valeurs de X
+predict(model_lm, newdata = data.frame(X=c(5,10,20)))
+```
+
+```{r}
+# Question 8: Régressogramme et courbe de régression
+cuts <- cut(X, breaks=c(-Inf,5,10,15,20,25,Inf))
+mean_by_class <- tapply(Y, cuts, mean)
+plot(X, Y, main="Régressogramme et courbe de régression", xlab="lstat", ylab="medv")
+mid_points <- c(2.5,7.5,12.5,17.5,22.5,30)
+lines(c(0, mid_points, 40), c(mean_by_class[1], mean_by_class, mean_by_class[length(mean_by_class)]), type="s", col="blue", lwd=2)
+lines(c(0, mid_points, 40), c(mean_by_class[1], mean_by_class, mean_by_class[length(mean_by_class)]), type="l", col="darkgreen", lwd=2)
+```
+
+```{r}
+# Question 9: Ajustez Y en fonction de X par un polynôme d’ordre 2 à 5
+plot(X, Y, main="Ajustements polynomiaux", xlab="lstat", ylab="medv")
+cols <- c("red","blue","cyan","green","purple")
+models <- list()
+AICs <- numeric()
+for(deg in 1:5){
+  form <- as.formula(paste("Y ~ poly(X,", deg, ", raw=TRUE)"))
+  m <- lm(form)
+  models[[as.character(deg)]] <- m
+  AICs[deg] <- AIC(m)
+  xseq <- seq(min(X), max(X), length.out=200)
+  lines(xseq, predict(m, newdata=data.frame(X=xseq)), col=cols[deg], lwd=2, lty=deg)
+}
+legend("topright", legend=paste("Deg.",1:5), col=cols, lwd=2)
+
+# Résumés des modèles polynomiaux
+res_poly <- data.frame(
+  Degre  = 1:5,
+  R2     = sapply(models, function(m) summary(m)$r.squared),
+  R2_adj = sapply(models, function(m) summary(m)$adj.r.squared),
+  AIC    = sapply(models, AIC),
+  BIC    = sapply(models, BIC)
+)
+res_poly
+
+
+```
+
+En ajustant MEDV en fonction de LSTAT par des polynômes de degrés croissants, on observe que le $R^2$ augmente nettement en passant du modèle linéaire (degré 1) au polynôme de degré 2, puis progresse encore légèrement pour les degrés supérieurs. Cependant, les gains supplémentaires de $R^2$ et de $R^2$ ajusté deviennent très faibles à partir de l’ordre 3, tandis que les courbes de degrés 4 et 5 présentent des ondulations peu réalistes en bout de domaine, signe d’un début de sur-ajustement. D’un point de vue compromis biais–variance, un polynôme de degré 2 (ou éventuellement 3) semble donc suffisant pour décrire la relation décroissante entre LSTAT et MEDV, sans complexifier inutilement le modèle.
+
+```{r}
+# Question 10: Calculez le critère AIC de chaque modèle et concluez
+AICs
+best_deg <- which.min(AICs)
+cat("Meilleur degré selon AIC =", best_deg, "avec AIC =", round(AICs[best_deg], 2), "\n")
+summary(models[[as.character(best_deg)]])
+```
+
+Selon le critère d’AIC, le polynôme de degré 5 est celui qui minimise l’AIC parmi les modèles testés, ce qui signifie que l’amélioration du log-vraisemblance compense la pénalisation due au plus grand nombre de paramètres. Cependant, à l’examen du tracé des courbes, les polynômes de degrés 4 et 5 présentent des oscillations peu réalistes en bout de domaine, ce qui suggère un début de sur-ajustement. De plus, le gain en $R^2$ (ou $R^2$ ajusté) entre les degrés 3 et 5 est relativement faible. Dans une optique de parcimonie, un polynôme de degré 2 ou 3 semble donc offrir un compromis plus raisonnable entre qualité d’ajustement et simplicité du modèle.
